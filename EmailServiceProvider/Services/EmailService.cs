@@ -2,44 +2,47 @@
 using Azure.Communication.Email;
 using EmailServiceProvider.Dtos;
 using EmailServiceProvider.Models;
+using Microsoft.Extensions.Options;
 
 namespace EmailServiceProvider.Services;
 
 public interface IEmailService
 {
-    Task<EmailServiceResult> SendEmailAsync(EmailMessageModel message);
+    Task<EmailServiceResult> SendEmailAsync(EmailRequestModel message);
 }
 
-public class EmailService : IEmailService
+public class EmailService(EmailClient client, IOptions<AzureCommunicationSettings> options) : IEmailService
 {
-    public async Task<EmailServiceResult> SendEmailAsync(EmailMessageModel message)
+    private readonly EmailClient _client = client;
+    private readonly AzureCommunicationSettings _settings = options.Value;
+
+    public async Task<EmailServiceResult> SendEmailAsync(EmailRequestModel? emailRequest = null)
     {
         try
         {
-            var recipients = message.Recipients.Select(email => new EmailAddress(email)).ToList();
+            ArgumentNullException.ThrowIfNull(emailRequest);
+
+            if (emailRequest.Recipients == null || emailRequest.Recipients.Count == 0)
+                throw new ArgumentException("At least one recipient is required", nameof(emailRequest));
+
+            var recipients = emailRequest.Recipients.Select(r => new EmailAddress(r)).ToList();
 
             var emailMessage = new EmailMessage(
                 senderAddress: _settings.SenderAddress,
-                content: new EmailContent(message.Subject)
+                content: new EmailContent(emailRequest.Subject)
                 {
-                    PlainText = message.PlainText,
-                    Html = message.Html
+                    PlainText = emailRequest.PlainText,
+                    Html = emailRequest.Html
                 },
                 recipients: new EmailRecipients(recipients));
 
-            var response = await _client.SendAsync(WaitUntil.Completed, emailMessage);
+            var result = await _client.SendAsync(WaitUntil.Completed, emailMessage);
 
-            return response.HasCompleted
-                ? new EmailServiceResult { Succeeded = true }
-                : new EmailServiceResult { Succeeded = false, Error = "The email send-confirmation could not be confirmed." };
-        }
-        catch (RequestFailedException ex)
-        {
-            return new EmailServiceResult { Succeeded = false, Error = $"An error occurred ({ex.Status}): {ex.Message}" };
+            return new EmailServiceResult { Succeeded = result.HasCompleted, Message = "Email was successfully sent." };
         }
         catch (Exception ex)
         {
-            return new EmailServiceResult { Succeeded = false, Error = $"An unexpected error occurred: {ex.Message}" };
+            return new EmailServiceResult { Succeeded = false, Message = $"Failed to send email: {ex.Message}" };
         }
     }
 }

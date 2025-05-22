@@ -6,11 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace EmailServiceProvider.Services;
 
-public interface IEmailService
-{
-    Task<EmailServiceResult> SendEmailAsync(EmailRequestModel? emailRequest = null);
-}
-
 public class EmailService(EmailClient client, IOptions<AzureCommunicationSettings> options) : IEmailService
 {
     private readonly EmailClient _client = client;

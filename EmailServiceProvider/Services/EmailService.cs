@@ -8,7 +8,7 @@ namespace EmailServiceProvider.Services;
 
 public interface IEmailService
 {
-    Task<EmailServiceResult> SendEmailAsync(EmailRequestModel message);
+    Task<EmailServiceResult> SendEmailAsync(EmailRequestModel? emailRequest = null);
 }
 
 public class EmailService(EmailClient client, IOptions<AzureCommunicationSettings> options) : IEmailService

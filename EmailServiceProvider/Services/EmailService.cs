@@ -1,4 +1,5 @@
 ﻿using Azure;
+using Azure.Communication.Email;
 using EmailServiceProvider.Dtos;
 using EmailServiceProvider.Models;
 

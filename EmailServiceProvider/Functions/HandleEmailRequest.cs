@@ -33,25 +33,27 @@ public class HandleEmailRequest(ILogger<HandleEmailRequest> logger, IEmailServic
 
             if (result.Succeeded)
             {
-                _logger.LogInformation("Email result: {message}", result.Message);
+                _logger.LogInformation("Email sent successfully: {Message}", result.Message);
                 await messageActions.CompleteMessageAsync(message);
             }
             else
             {
-                _logger.LogWarning("Failed to send email: {message}", result.Message);
-                await messageActions.DeadLetterMessageAsync(message, new Dictionary<string, object>
-                {
-                    { "Reason", $"SendFailure: {result.Message}" }
-                });
+                _logger.LogWarning("Email send failed: {Error}", result.Message);
+                await messageActions.DeadLetterMessageAsync(
+                    message,
+                    deadLetterReason: "SendFailure",
+                    deadLetterErrorDescription: result.Message
+                    );
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Failed to process email message");
-            await messageActions.DeadLetterMessageAsync(message, new Dictionary<string, object>
-            {
-                { "Reason", $"ProcessingError: {ex.Message}" }
-            });
+            _logger.LogError(ex, "Unexpected error in email processing.");
+            await messageActions.DeadLetterMessageAsync(
+                message,
+                deadLetterReason: "ProcessingError",
+                deadLetterErrorDescription: ex.Message
+                );
         }
     }
 }
